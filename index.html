@@ -156,9 +156,9 @@
   tbody tr { border-bottom: 1px solid var(--border); }
   tbody tr.best { background: var(--green-tint); }
   /* Transition used during slide-in / re-ranking (FLIP) animations. */
-  tbody tr.animating { transition: transform 0.55s ease, opacity 0.55s ease; }
+  tbody tr.animating { transition: transform 0.7s ease, opacity 0.7s ease; }
   /* Fade + slide a row out when it is removed. */
-  tbody tr.removing { opacity: 0; transform: translateX(28px); transition: opacity 0.45s ease, transform 0.45s ease; }
+  tbody tr.removing { opacity: 0; transform: translateX(28px); transition: opacity 0.55s ease, transform 0.55s ease; }
   @media (prefers-reduced-motion: reduce) {
     body, .card, tbody tr.animating, tbody tr.removing { transition: none !important; }
   }
@@ -420,7 +420,7 @@
     var done = false;
     function finish() { if (done) return; done = true; actuallyRemove(id); }
     row.addEventListener("transitionend", finish);
-    setTimeout(finish, 600); // fallback in case transitionend doesn't fire
+    setTimeout(finish, 750); // fallback in case transitionend doesn't fire
     row.classList.add("removing");
   }
 
@@ -465,7 +465,7 @@
     function frame(now) {
       if (start === null) start = now;
       var t = Math.min(1, (now - start) / dur);
-      var eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      var eased = 1 - Math.pow(1 - t, 2); // gentle ease-out (quad) — counts more evenly
       el.textContent = fmtValue(target * eased);
       if (t < 1) requestAnimationFrame(frame);
       else el.textContent = fmtValue(target);
@@ -482,7 +482,7 @@
       row.removeEventListener("transitionend", cleanup);
     }
     row.addEventListener("transitionend", cleanup);
-    setTimeout(cleanup, 700);
+    setTimeout(cleanup, 900);
   }
 
   // FLIP re-ranking for moved rows + slide-in for newly added rows.
@@ -522,7 +522,7 @@
       if (countedIds[id]) return;
       countedIds[id] = true;
       var target = parseFloat(span.getAttribute("data-ppml"));
-      if (isFinite(target)) animateCount(span, target, 1000);
+      if (isFinite(target)) animateCount(span, target, 1600);
     });
   }
 
