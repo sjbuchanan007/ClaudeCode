@@ -96,10 +96,11 @@ def make_mark(size):
     return gold.resize((size, size), Image.LANCZOS)
 
 
-for sz in (180, 192, 512):
-    make_icon(sz).save("icon-%d.png" % sz)
-    print("wrote icon-%d.png" % sz)
-make_mark(512).save("logo-mark.png")
-print("wrote logo-mark.png")
-make_icon(1024).save("logo-preview.png")
-print("wrote logo-preview.png")
+if __name__ == "__main__":
+    for sz in (180, 192, 512):
+        make_icon(sz).save("icon-%d.png" % sz)
+        print("wrote icon-%d.png" % sz)
+    make_mark(512).save("logo-mark.png")
+    print("wrote logo-mark.png")
+    make_icon(1024).save("logo-preview.png")
+    print("wrote logo-preview.png")
