@@ -42,43 +42,64 @@ SEGMENTS = [
     ((0.842, 0.360), (0.855, 0.340), (0.818, 0.340), (0.795, 0.360)),
     # inner (left) edge of the up-stroke down to the valley (right of notch)
     ((0.795, 0.360), (0.760, 0.435), (0.585, 0.640), (0.475, 0.795)),
-    # inner (right) edge of the down-stroke back up (left of notch)
-    ((0.475, 0.795), (0.520, 0.640), (0.540, 0.520), (0.520, 0.430)),
-    # thin underside of the arch heading back toward the flourish
-    ((0.520, 0.430), (0.450, 0.405), (0.360, 0.405), (0.300, 0.425)),
+    # inner (right) edge of the down-stroke up to the concave shoulder
+    ((0.475, 0.795), (0.520, 0.650), (0.510, 0.530), (0.455, 0.450)),
+    # shoulder bridging the down-stroke into the flourish (closes the gap)
+    ((0.455, 0.450), (0.400, 0.430), (0.355, 0.430), (0.300, 0.440)),
     # underside of the flourish closing back at the tapered tip
-    ((0.300, 0.425), (0.235, 0.450), (0.180, 0.488), A),
+    ((0.300, 0.440), (0.235, 0.455), (0.182, 0.488), A),
 ]
 
 
-def build_outline(S):
+DY = -0.055  # nudge the glyph up so it sits visually centred
+
+
+def build_outline(S, dy=DY):
     pts = []
     for seg in SEGMENTS:
-        pts.extend([(x * S, y * S) for (x, y) in cubic(*seg)])
+        pts.extend([(x * S, (y + dy) * S) for (x, y) in cubic(*seg)])
     return pts
 
 
-def make(size):
-    SS = 4  # supersample
-    S = size * SS
-    # background gradient
-    img = Image.new("RGB", (S, S), BG_BOT)
-    d = ImageDraw.Draw(img)
-    for y in range(S):
-        d.line([(0, y), (S, y)], fill=lerp(BG_TOP, BG_BOT, y / S))
-
-    # gold gradient, clipped to the glyph via a mask
+def gold_gradient(S):
     gold = Image.new("RGB", (S, S))
     gd = ImageDraw.Draw(gold)
     for y in range(S):
         gd.line([(0, y), (S, y)], fill=lerp(GOLD_TOP, GOLD_BOT, y / S))
+    return gold
 
+
+def glyph_mask(S):
     mask = Image.new("L", (S, S), 0)
     ImageDraw.Draw(mask).polygon(build_outline(S), fill=255)
+    return mask
 
-    img.paste(gold, (0, 0), mask)
+
+def make_icon(size):
+    """Gold 'v' on the dark theme background — for app icon / favicon."""
+    SS = 4
+    S = size * SS
+    img = Image.new("RGB", (S, S), BG_BOT)
+    d = ImageDraw.Draw(img)
+    for y in range(S):
+        d.line([(0, y), (S, y)], fill=lerp(BG_TOP, BG_BOT, y / S))
+    img.paste(gold_gradient(S), (0, 0), glyph_mask(S))
     return img.resize((size, size), Image.LANCZOS)
 
 
-make(1024).save("logo-preview.png")
+def make_mark(size):
+    """Gold 'v' on a transparent background — for the in-app header logo."""
+    SS = 4
+    S = size * SS
+    gold = gold_gradient(S).convert("RGBA")
+    gold.putalpha(glyph_mask(S))
+    return gold.resize((size, size), Image.LANCZOS)
+
+
+for sz in (180, 192, 512):
+    make_icon(sz).save("icon-%d.png" % sz)
+    print("wrote icon-%d.png" % sz)
+make_mark(512).save("logo-mark.png")
+print("wrote logo-mark.png")
+make_icon(1024).save("logo-preview.png")
 print("wrote logo-preview.png")
