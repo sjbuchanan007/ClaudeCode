@@ -15,19 +15,66 @@
 <meta name="apple-mobile-web-app-title" content="Beer Value">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
+
+<!-- Apply the saved theme before first paint to avoid a flash of the wrong colours. -->
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("beerValueCalc.theme");
+      document.documentElement.setAttribute(
+        "data-theme", (t === "light" || t === "dark") ? t : "auto");
+    } catch (e) {
+      document.documentElement.setAttribute("data-theme", "auto");
+    }
+  })();
+</script>
 <style>
+  /* Dark theme is the default (also used by "auto" when the system is dark). */
   :root {
     --bg: #1c1410;
     --panel: #2a1f17;
     --panel-2: #33271d;
     --gold: #f0a830;
     --gold-dim: #b8821f;
-    --cream: #f5e6c8;
     --green: #5cb85c;
+    --green-tint: rgba(92,184,92,0.12);
     --red: #d9534f;
     --text: #f5e6c8;
     --muted: #b8a888;
     --border: #4a3a2a;
+    --on-gold: #1c1410; /* text colour that sits on a gold button */
+  }
+  /* Light theme — applied when explicitly chosen. */
+  :root[data-theme="light"] {
+    --bg: #faf4e8;
+    --panel: #ffffff;
+    --panel-2: #f3ebda;
+    --gold: #b8771a;
+    --gold-dim: #9a6210;
+    --green: #3d8b3d;
+    --green-tint: rgba(61,139,61,0.12);
+    --red: #c9302c;
+    --text: #2a1f17;
+    --muted: #7a6a52;
+    --border: #e4d8c0;
+    --on-gold: #ffffff;
+  }
+  /* "Auto" follows the device: switch to light vars when the system is light. */
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="auto"] {
+      --bg: #faf4e8;
+      --panel: #ffffff;
+      --panel-2: #f3ebda;
+      --gold: #b8771a;
+      --gold-dim: #9a6210;
+      --green: #3d8b3d;
+      --green-tint: rgba(61,139,61,0.12);
+      --red: #c9302c;
+      --text: #2a1f17;
+      --muted: #7a6a52;
+      --border: #e4d8c0;
+      --on-gold: #ffffff;
+    }
   }
   * { box-sizing: border-box; }
   body {
@@ -36,6 +83,7 @@
     background: var(--bg);
     color: var(--text);
     line-height: 1.5;
+    transition: background-color 0.2s ease, color 0.2s ease;
     padding: 1rem;
     /* Clear the notch / status bar when launched from the Home Screen */
     padding-top: calc(1rem + env(safe-area-inset-top));
@@ -43,16 +91,34 @@
     padding-right: calc(1rem + env(safe-area-inset-right));
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
-  .wrap { max-width: 760px; margin: 0 auto; }
+  .wrap { max-width: 760px; margin: 0 auto; position: relative; }
   header { text-align: center; margin-bottom: 1.5rem; }
   h1 { color: var(--gold); margin: 0.2rem 0; font-size: 1.8rem; }
   .tagline { color: var(--muted); font-size: 0.95rem; }
+  .theme-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    line-height: 1;
+  }
+  .theme-toggle:hover { border-color: var(--gold); }
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 1.25rem;
     margin-bottom: 1.25rem;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
   .form-grid {
     display: grid;
@@ -80,7 +146,7 @@
     padding: 0.7rem 1rem;
     font-weight: 600;
   }
-  .btn-add { background: var(--gold); color: #1c1410; width: 100%; margin-top: 1rem; }
+  .btn-add { background: var(--gold); color: var(--on-gold); width: 100%; margin-top: 1rem; }
   .btn-add:hover { background: var(--gold-dim); }
   .btn-clear { background: transparent; color: var(--muted); border: 1px solid var(--border); }
   .btn-clear:hover { color: var(--text); }
@@ -88,7 +154,7 @@
   th, td { padding: 0.6rem 0.5rem; text-align: left; font-size: 0.92rem; }
   th { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
   tbody tr { border-bottom: 1px solid var(--border); }
-  tbody tr.best { background: rgba(92,184,92,0.12); }
+  tbody tr.best { background: var(--green-tint); }
   .ppml { font-weight: 700; color: var(--gold); white-space: nowrap; }
   .best-badge { background: var(--green); color: #0c1c0c; font-size: 0.65rem; padding: 0.12rem 0.4rem; border-radius: 4px; margin-left: 0.4rem; vertical-align: middle; font-weight: 700; }
   .type-pill { font-size: 0.7rem; padding: 0.15rem 0.45rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
@@ -112,6 +178,7 @@
 </head>
 <body>
 <div class="wrap">
+  <button class="theme-toggle" id="themeBtn" type="button" title="Switch colour theme" aria-label="Switch colour theme"></button>
   <header>
     <h1>🍺 Beer Value Calculator</h1>
     <div class="tagline">Compare bottled &amp; canned beers down to pence per ml</div>
@@ -181,9 +248,17 @@
 
   var STORAGE_KEY = "beerValueCalc.v1";
   var UNIT_KEY = "beerValueCalc.unit";
+  var THEME_KEY = "beerValueCalc.theme";
   var ML_PER_PINT = 568.261; // UK imperial pint
+  var THEMES = ["auto", "light", "dark"]; // cycle order
+  var THEME_INFO = {
+    auto: { label: "Auto", icon: "🌗" },
+    light: { label: "Light", icon: "☀️" },
+    dark: { label: "Dark", icon: "🌙" }
+  };
   var beers = load();
   var unitMode = loadUnit();
+  var theme = loadTheme();
 
   var els = {
     name: document.getElementById("name"),
@@ -195,6 +270,7 @@
     addBtn: document.getElementById("addBtn"),
     clearBtn: document.getElementById("clearBtn"),
     unitMode: document.getElementById("unitMode"),
+    themeBtn: document.getElementById("themeBtn"),
     results: document.getElementById("results")
   };
 
@@ -224,6 +300,37 @@
 
   function saveUnit() {
     try { localStorage.setItem(UNIT_KEY, unitMode); } catch (e) { /* ignore */ }
+  }
+
+  function loadTheme() {
+    try {
+      var t = localStorage.getItem(THEME_KEY);
+      return THEMES.indexOf(t) !== -1 ? t : "auto";
+    } catch (e) {
+      return "auto";
+    }
+  }
+
+  // Resolve "auto" to the actual light/dark the system is currently showing.
+  function resolvedTheme() {
+    if (theme !== "auto") return theme;
+    return (window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+  }
+
+  function applyTheme() {
+    document.documentElement.setAttribute("data-theme", theme);
+    var info = THEME_INFO[theme];
+    els.themeBtn.textContent = info.icon + " " + info.label;
+    // Keep the browser/status-bar chrome colour in step with the theme.
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", resolvedTheme() === "light" ? "#faf4e8" : "#1c1410");
+  }
+
+  function cycleTheme() {
+    theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* ignore */ }
+    applyTheme();
   }
 
   // Pence per ml = (price in pounds * 100) / total volume in ml
@@ -388,6 +495,15 @@
 
   els.addBtn.addEventListener("click", addBeer);
   els.clearBtn.addEventListener("click", clearAll);
+
+  els.themeBtn.addEventListener("click", cycleTheme);
+  applyTheme();
+  // When in Auto, follow live system theme changes (keeps chrome colour in sync).
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", function () {
+      if (theme === "auto") applyTheme();
+    });
+  }
 
   els.unitMode.value = unitMode;
   els.unitMode.addEventListener("change", function () {
