@@ -155,6 +155,13 @@
   th { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
   tbody tr { border-bottom: 1px solid var(--border); }
   tbody tr.best { background: var(--green-tint); }
+  /* Transition used during slide-in / re-ranking (FLIP) animations. */
+  tbody tr.animating { transition: transform 0.35s ease, opacity 0.35s ease; }
+  /* Fade + slide a row out when it is removed. */
+  tbody tr.removing { opacity: 0; transform: translateX(28px); transition: opacity 0.28s ease, transform 0.28s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    body, .card, tbody tr.animating, tbody tr.removing { transition: none !important; }
+  }
   .ppml { font-weight: 700; color: var(--gold); white-space: nowrap; }
   .best-badge { background: var(--green); color: #0c1c0c; font-size: 0.65rem; padding: 0.12rem 0.4rem; border-radius: 4px; margin-left: 0.4rem; vertical-align: middle; font-weight: 700; }
   .type-pill { font-size: 0.7rem; padding: 0.15rem 0.45rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
@@ -259,6 +266,15 @@
   var beers = load();
   var unitMode = loadUnit();
   var theme = loadTheme();
+
+  // Animation state
+  var countedIds = {};    // ids whose value has run its count-up
+  var isFirstRender = true;
+
+  function reduceMotion() {
+    return window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
 
   var els = {
     name: document.getElementById("name"),
@@ -390,10 +406,22 @@
     setTimeout(function () { el.style.borderColor = ""; }, 1200);
   }
 
-  function removeBeer(id) {
+  function actuallyRemove(id) {
     beers = beers.filter(function (b) { return b.id !== id; });
+    delete countedIds[id];
     save();
     render();
+  }
+
+  function removeBeer(id) {
+    var row = els.results.querySelector('tr[data-id="' + id + '"]');
+    if (!row || reduceMotion()) { actuallyRemove(id); return; }
+    // Fade the row out, then drop it from the data and re-render (others FLIP up).
+    var done = false;
+    function finish() { if (done) return; done = true; actuallyRemove(id); }
+    row.addEventListener("transitionend", finish);
+    setTimeout(finish, 350); // fallback in case transitionend doesn't fire
+    row.classList.add("removing");
   }
 
   function clearAll() {
@@ -431,9 +459,82 @@
     });
   }
 
+  // Animate the displayed value ticking up from 0 to its target.
+  function animateCount(el, target, dur) {
+    var start = null;
+    function frame(now) {
+      if (start === null) start = now;
+      var t = Math.min(1, (now - start) / dur);
+      var eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      el.textContent = fmtValue(target * eased);
+      if (t < 1) requestAnimationFrame(frame);
+      else el.textContent = fmtValue(target);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // Clean up inline animation styles once a row's transition finishes.
+  function clearAnimating(row) {
+    function cleanup() {
+      row.classList.remove("animating");
+      row.style.transform = "";
+      row.style.opacity = "";
+      row.removeEventListener("transitionend", cleanup);
+    }
+    row.addEventListener("transitionend", cleanup);
+    setTimeout(cleanup, 450);
+  }
+
+  // FLIP re-ranking for moved rows + slide-in for newly added rows.
+  function runRowAnimations(oldRects) {
+    var rows = els.results.querySelectorAll("tbody tr[data-id]");
+    Array.prototype.forEach.call(rows, function (row) {
+      var id = row.getAttribute("data-id");
+      var old = oldRects[id];
+      if (old) {
+        var dy = old.top - row.getBoundingClientRect().top;
+        if (!dy) return;
+        row.style.transform = "translateY(" + dy + "px)"; // start at old spot
+        requestAnimationFrame(function () {
+          row.classList.add("animating");
+          row.style.transform = "";            // glide to new spot
+          clearAnimating(row);
+        });
+      } else if (!isFirstRender) {
+        row.style.opacity = "0";
+        row.style.transform = "translateY(-10px)";
+        requestAnimationFrame(function () {
+          row.classList.add("animating");
+          row.style.opacity = "";
+          row.style.transform = "";
+          clearAnimating(row);
+        });
+      }
+    });
+  }
+
+  // Count up any value cells that haven't animated yet.
+  function runCountUp() {
+    if (reduceMotion()) return;
+    var spans = els.results.querySelectorAll(".ppml[data-ppml]");
+    Array.prototype.forEach.call(spans, function (span) {
+      var id = span.getAttribute("data-row");
+      if (countedIds[id]) return;
+      countedIds[id] = true;
+      var target = parseFloat(span.getAttribute("data-ppml"));
+      if (isFinite(target)) animateCount(span, target, 600);
+    });
+  }
+
   function render() {
+    // Capture current row positions for FLIP before we rebuild the table.
+    var oldRects = {};
+    Array.prototype.forEach.call(els.results.querySelectorAll("tbody tr[data-id]"),
+      function (row) { oldRects[row.getAttribute("data-id")] = row.getBoundingClientRect(); });
+
     if (!beers.length) {
       els.results.innerHTML = '<div class="empty">No beers yet — add one above to start comparing.</div>';
+      isFirstRender = false;
       return;
     }
 
@@ -465,14 +566,14 @@
       var ppuText = ppu != null ? (ppu.toFixed(1) + "p / unit") : "";
       var metaBits = [abvText, ppuText].filter(Boolean).join(" · ");
 
-      return '<tr class="' + (isBest ? "best" : "") + '">' +
+      return '<tr data-id="' + b.id + '" class="' + (isBest ? "best" : "") + '">' +
         '<td class="name-cell">' + esc(b.name) +
           (isBest ? '<span class="best-badge">BEST</span>' : '') +
           (metaBits ? '<span class="sub">' + esc(metaBits) + '</span>' : '') +
         '</td>' +
         '<td class="hide-sm"><span class="type-pill">' + esc(b.type) + '</span></td>' +
         '<td class="hide-sm">' + fmtMoney(b.price) + '<span class="sub">' + esc(packInfo) + '</span></td>' +
-        '<td><span class="ppml">' + fmtValue(ppml) + '</span>' +
+        '<td><span class="ppml" data-ppml="' + ppml + '" data-row="' + b.id + '">' + fmtValue(ppml) + '</span>' +
           (savingsCell ? '<span class="sub">' + savingsCell + '</span>' : '') +
         '</td>' +
         '<td style="text-align:right"><button class="del" data-id="' + b.id + '" title="Remove">✕</button></td>' +
@@ -491,6 +592,10 @@
     Array.prototype.forEach.call(els.results.querySelectorAll(".del"), function (btn) {
       btn.addEventListener("click", function () { removeBeer(btn.getAttribute("data-id")); });
     });
+
+    if (!reduceMotion()) runRowAnimations(oldRects);
+    runCountUp();
+    isFirstRender = false;
   }
 
   els.addBtn.addEventListener("click", addBeer);
@@ -509,6 +614,7 @@
   els.unitMode.addEventListener("change", function () {
     unitMode = els.unitMode.value;
     saveUnit();
+    countedIds = {}; // re-run the count-up so values tick to the new unit
     render();
   });
 
