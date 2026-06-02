@@ -10,6 +10,7 @@ priority, not fixed dates. ✅ = done · 🔜 = next up · 💡 = idea / later.
 - Multipack support and optional ABV → pence-per-unit
 - Local saving of the beer list and chosen units
 - Home Screen install support (icons + web manifest, iOS meta tags)
+- Light / dark / auto theme toggle (follows system, remembered between visits)
 
 ## 🔜 Phase 1 — Must-haves
 
@@ -19,10 +20,10 @@ priority, not fixed dates. ✅ = done · 🔜 = next up · 💡 = idea / later.
 - [ ] Export results as a designed image card for posting to social
 - [ ] "Copy summary" to clipboard
 
-### Light / dark mode
-- [ ] Manual light/dark toggle
-- [ ] "Auto" option that follows the device's system theme
-- [ ] Remember the choice between visits
+### Light / dark mode ✅
+- [x] Manual light/dark toggle
+- [x] "Auto" option that follows the device's system theme
+- [x] Remember the choice between visits
 
 ## 🔜 Phase 2 — Calculator improvements
 
