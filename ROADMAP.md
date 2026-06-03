@@ -11,14 +11,18 @@ priority, not fixed dates. ✅ = done · 🔜 = next up · 💡 = idea / later.
 - Local saving of the beer list and chosen units
 - Home Screen install support (icons + web manifest, iOS meta tags)
 - Light / dark / auto theme toggle (follows system, remembered between visits)
+- Custom "v" lettermark branding (app icons, header logo, favicon)
+- Analytics: Cloudflare Web Analytics (page views) + GoatCounter (custom events)
+- Share button: native share sheet + copy-to-clipboard, with share-event tracking
 
 ## 🔜 Phase 1 — Must-haves
 
 ### Share to social media
-- [ ] Native share sheet via the Web Share API (one tap to WhatsApp, Messages, X, etc.)
+- [x] Native share sheet via the Web Share API (one tap to WhatsApp, Messages, X, etc.)
+- [x] "Copy summary" to clipboard (desktop fallback)
+- [x] Track when the share function is used (GoatCounter events)
 - [ ] Shareable link that encodes the current comparison in the URL
 - [ ] Export results as a designed image card for posting to social
-- [ ] "Copy summary" to clipboard
 
 ### Light / dark mode ✅
 - [x] Manual light/dark toggle
