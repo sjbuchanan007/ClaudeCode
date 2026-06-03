@@ -152,6 +152,27 @@
   .btn-add:hover { background: var(--gold-dim); }
   .btn-clear { background: transparent; color: var(--muted); border: 1px solid var(--border); }
   .btn-clear:hover { color: var(--text); }
+  .btn-share { background: var(--gold); color: var(--on-gold); border: none; padding: 0.45rem 0.8rem; font-size: 0.85rem; }
+  .btn-share:hover { background: var(--gold-dim); }
+  .btn-share:disabled { opacity: 0.45; cursor: default; }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(1.5rem);
+    background: var(--gold);
+    color: var(--on-gold);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.6rem 1rem;
+    border-radius: 999px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 0.6rem 0.5rem; text-align: left; font-size: 0.92rem; }
   th { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
@@ -248,6 +269,7 @@
           <option value="100ml">pence / 100 ml</option>
           <option value="pint">price / pint (568 ml)</option>
         </select>
+        <button class="btn-share" id="shareBtn" title="Share this comparison">📤 Share</button>
         <button class="btn-clear" id="clearBtn">Clear all</button>
       </div>
     </div>
@@ -256,6 +278,8 @@
 
   <footer>Best value is highlighted. Prices saved in your browser only.</footer>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (function () {
@@ -274,6 +298,29 @@
   var beers = load();
   var unitMode = loadUnit();
   var theme = loadTheme();
+
+  // --- GoatCounter analytics (event tracking) ---
+  // Set this to your GoatCounter code, e.g. "thevaluator" for
+  // https://thevaluator.goatcounter.com — leave "" to disable.
+  var GC_CODE = "thevaluator";
+
+  (function loadGoatCounter() {
+    if (!GC_CODE) return;
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = "//gc.zgo.at/count.js";
+    s.setAttribute("data-goatcounter", "https://" + GC_CODE + ".goatcounter.com/count");
+    document.head.appendChild(s);
+  })();
+
+  // Record a custom event (no-op until GC_CODE is set and the script loads).
+  function gcEvent(path, title) {
+    try {
+      if (window.goatcounter && window.goatcounter.count) {
+        window.goatcounter.count({ path: path, title: title || path, event: true });
+      }
+    } catch (e) { /* analytics must never break the app */ }
+  }
 
   // Animation state
   var countedIds = {};    // ids whose value has run its count-up
@@ -295,6 +342,8 @@
     clearBtn: document.getElementById("clearBtn"),
     unitMode: document.getElementById("unitMode"),
     themeBtn: document.getElementById("themeBtn"),
+    shareBtn: document.getElementById("shareBtn"),
+    toast: document.getElementById("toast"),
     results: document.getElementById("results")
   };
 
@@ -540,6 +589,8 @@
     Array.prototype.forEach.call(els.results.querySelectorAll("tbody tr[data-id]"),
       function (row) { oldRects[row.getAttribute("data-id")] = row.getBoundingClientRect(); });
 
+    els.shareBtn.disabled = beers.length === 0;
+
     if (!beers.length) {
       els.results.innerHTML = '<div class="empty">No beers yet — add one above to start comparing.</div>';
       isFirstRender = false;
@@ -606,8 +657,54 @@
     isFirstRender = false;
   }
 
+  var toastTimer = null;
+  function showToast(msg) {
+    els.toast.textContent = msg;
+    els.toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { els.toast.classList.remove("show"); }, 2200);
+  }
+
+  // Build a plain-text summary of the current comparison for sharing.
+  function buildShareText() {
+    var sorted = beers.slice().sort(function (a, b) {
+      return pencePerMl(a) - pencePerMl(b);
+    });
+    var lines = ["🍺 Beer value comparison — The Valuator", ""];
+    sorted.slice(0, 5).forEach(function (b, i) {
+      var medal = i === 0 ? "🥇" : (i + 1) + ".";
+      lines.push(medal + " " + b.name + " — " + fmtValue(pencePerMl(b)));
+    });
+    if (sorted.length > 5) lines.push("…and " + (sorted.length - 5) + " more");
+    lines.push("", "Compare yours 👉 https://thevaluator.app");
+    return lines.join("\n");
+  }
+
+  function shareResults() {
+    if (!beers.length) return;
+    var text = buildShareText();
+    var shareData = {
+      title: "The Valuator — beer value comparison",
+      text: text,
+      url: "https://thevaluator.app"
+    };
+    if (navigator.share) {
+      navigator.share(shareData).then(function () {
+        gcEvent("share/native", "Share (native sheet)");
+      }).catch(function () { /* user cancelled — ignore */ });
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        showToast("Comparison copied to clipboard");
+        gcEvent("share/copy", "Share (copied to clipboard)");
+      }).catch(function () { showToast("Couldn't copy — try again"); });
+    } else {
+      showToast("Sharing isn't supported on this browser");
+    }
+  }
+
   els.addBtn.addEventListener("click", addBeer);
   els.clearBtn.addEventListener("click", clearAll);
+  els.shareBtn.addEventListener("click", shareResults);
 
   els.themeBtn.addEventListener("click", cycleTheme);
   applyTheme();
