@@ -96,6 +96,21 @@
   .logo { width: 72px; height: 72px; display: block; margin: 0.25rem auto 0.4rem; }
   h1 { color: var(--gold); margin: 0.2rem 0; font-size: 1.8rem; }
   .tagline { color: var(--muted); font-size: 0.95rem; }
+  .tip {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--green-tint);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 1.1rem;
+    font-size: 0.9rem;
+  }
+  .tip span { flex: 1; }
+  .tip-close { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 0.2rem 0.35rem; line-height: 1; }
+  .tip-close:hover { color: var(--text); }
   .theme-toggle {
     position: absolute;
     top: 0;
@@ -260,6 +275,11 @@
     <div class="tagline">Beer Value Calculator — compare beers down to the pence per ml</div>
   </header>
 
+  <div class="tip" id="tip" hidden>
+    <span>👋 New here? Pop a couple of beers' prices &amp; sizes in below — we'll crown the best value.</span>
+    <button class="tip-close" id="tipClose" type="button" aria-label="Dismiss tip">✕</button>
+  </div>
+
   <div class="card">
     <div class="form-grid">
       <div class="field col4">
@@ -333,6 +353,7 @@
   "use strict";
 
   var STORAGE_KEY = "beerValueCalc.v1";
+  var TIP_KEY = "beerValueCalc.seenTip";
   var UNIT_KEY = "beerValueCalc.unit";
   var THEME_KEY = "beerValueCalc.theme";
   var ML_PER_PINT = 568.261; // UK imperial pint
@@ -412,6 +433,8 @@
     volume: document.getElementById("volume"),
     qty: document.getElementById("qty"),
     addBtn: document.getElementById("addBtn"),
+    tip: document.getElementById("tip"),
+    tipClose: document.getElementById("tipClose"),
     clearBtn: document.getElementById("clearBtn"),
     unitMode: document.getElementById("unitMode"),
     themeBtn: document.getElementById("themeBtn"),
@@ -497,6 +520,12 @@
     return (beer.price * 100) / units;
   }
 
+  // Hide the first-run tip and remember it's been seen.
+  function dismissTip() {
+    if (els.tip) els.tip.hidden = true;
+    try { localStorage.setItem(TIP_KEY, "1"); } catch (e) { /* ignore */ }
+  }
+
   function addBeer() {
     var price = parseFloat(els.price.value);
     var volume = parseFloat(els.volume.value);
@@ -519,6 +548,7 @@
 
     save();
     render();
+    dismissTip();
     resetForm();
     els.name.focus();
   }
@@ -939,6 +969,14 @@
   els.clearBtn.addEventListener("click", clearAll);
   els.shareBtn.addEventListener("click", shareResults);
   els.imageBtn.addEventListener("click", shareImage);
+
+  // First-run tip: show once for brand-new visitors with no saved beers.
+  els.tipClose.addEventListener("click", dismissTip);
+  (function setupTip() {
+    var seen;
+    try { seen = localStorage.getItem(TIP_KEY); } catch (e) { /* ignore */ }
+    if (!seen && !beers.length) els.tip.hidden = false;
+  })();
 
   els.themeBtn.addEventListener("click", cycleTheme);
   applyTheme();
