@@ -50,7 +50,7 @@ priority, not fixed dates. ✅ = done · 🔜 = next up · 💡 = idea / later.
 - [x] Subtle animations — slide-in on add, fade-out on remove, FLIP re-ranking, value count-up
 - [ ] Haptic feedback on mobile
 - [ ] First-run tip / lightweight onboarding
-- [ ] Custom domain (e.g. thevaluator.app)
+- [x] Custom domain (thevaluator.app, with HTTPS)
 
 ---
 
