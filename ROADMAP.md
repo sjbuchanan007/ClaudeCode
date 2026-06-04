@@ -22,7 +22,7 @@ priority, not fixed dates. ✅ = done · 🔜 = next up · 💡 = idea / later.
 - [x] "Copy summary" to clipboard (desktop fallback)
 - [x] Track when the share function is used (GoatCounter events)
 - [ ] Shareable link that encodes the current comparison in the URL
-- [ ] Export results as a designed image card for posting to social
+- [x] Export results as a designed image card for posting to social
 
 ### Light / dark mode ✅
 - [x] Manual light/dark toggle

@@ -196,7 +196,7 @@
   .empty { text-align: center; color: var(--muted); padding: 2rem 1rem; }
   .results-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
   .results-head h2 { color: var(--gold); font-size: 1.2rem; margin: 0; }
-  .head-controls { display: flex; gap: 0.5rem; align-items: center; }
+  .head-controls { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
   .head-controls select { padding: 0.45rem 0.5rem; font-size: 0.85rem; }
   .units { color: var(--muted); font-size: 0.82rem; }
   .savings { color: var(--green); font-size: 0.8rem; }
@@ -310,6 +310,7 @@
           <option value="pint">price / pint (568 ml)</option>
         </select>
         <button class="btn-share" id="shareBtn" title="Share this comparison">📤 Share</button>
+        <button class="btn-share" id="imageBtn" title="Share as an image">🖼️ Image</button>
         <button class="btn-clear" id="clearBtn">Clear all</button>
       </div>
     </div>
@@ -415,6 +416,7 @@
     unitMode: document.getElementById("unitMode"),
     themeBtn: document.getElementById("themeBtn"),
     shareBtn: document.getElementById("shareBtn"),
+    imageBtn: document.getElementById("imageBtn"),
     toast: document.getElementById("toast"),
     results: document.getElementById("results")
   };
@@ -662,6 +664,7 @@
       function (row) { oldRects[row.getAttribute("data-id")] = row.getBoundingClientRect(); });
 
     els.shareBtn.disabled = beers.length === 0;
+    els.imageBtn.disabled = beers.length === 0;
 
     if (!beers.length) {
       els.results.innerHTML = '<div class="empty">No beers yet — add one above to start comparing.</div>';
@@ -774,9 +777,168 @@
     }
   }
 
+  // ---- Shareable image card (drawn on a canvas, 1080×1080) ----
+  var FS = '-apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  var _logoImg = null;
+
+  function getLogo() {
+    if (_logoImg) return Promise.resolve(_logoImg);
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () { _logoImg = img; resolve(img); };
+      img.onerror = function () { resolve(null); };
+      img.src = "logo-mark.png";
+    });
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function fitText(ctx, text, maxW) {
+    if (ctx.measureText(text).width <= maxW) return text;
+    var t = text;
+    while (t.length > 1 && ctx.measureText(t + "…").width > maxW) t = t.slice(0, -1);
+    return t + "…";
+  }
+
+  function sizeLabel(b) {
+    var unit = (b.type || "").toLowerCase();
+    if (b.qty > 1) return b.qty + " × " + b.volume + " ml " + unit + "s";
+    return b.volume + " ml " + unit;
+  }
+
+  function unitWord() {
+    if (unitMode === "pint") return "price per pint";
+    if (unitMode === "100ml") return "pence per 100 ml";
+    return "pence per ml";
+  }
+
+  function drawCardRow(ctx, b, i, y, rh) {
+    var best = i === 0;
+    var innerH = rh - 18;
+    var cy = y + innerH / 2;
+
+    ctx.fillStyle = best ? "#2c3a25" : "#2a1f17";
+    roundRect(ctx, 60, y, 960, innerH, 20); ctx.fill();
+
+    // rank disc
+    var dx = 132;
+    ctx.beginPath(); ctx.arc(dx, cy, 38, 0, Math.PI * 2);
+    if (best) { ctx.fillStyle = "#f0a830"; ctx.fill(); ctx.fillStyle = "#1c1410"; }
+    else { ctx.strokeStyle = "#5a4832"; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = "#b9a888"; }
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "bold 40px " + FS;
+    ctx.fillText(String(i + 1), dx, cy + 2);
+    ctx.textBaseline = "alphabetic";
+
+    // value (right) — drawn first so we know its left edge
+    var valText = fmtValue(pencePerMl(b));
+    ctx.textAlign = "right"; ctx.font = "bold 50px " + FS;
+    ctx.fillStyle = best ? "#f0a830" : "#f5c46e";
+    ctx.fillText(valText, 1000, cy + 18);
+    var valLeft = 1000 - ctx.measureText(valText).width;
+
+    // name (truncated to fit, leaving room for value + BEST badge)
+    ctx.textAlign = "left"; ctx.font = "bold 42px " + FS; ctx.fillStyle = "#f5e6c8";
+    var nameMaxW = (valLeft - 30) - 196 - (best ? 110 : 0);
+    var nameText = fitText(ctx, b.name, nameMaxW);
+    ctx.fillText(nameText, 196, cy - 4);
+
+    if (best) {
+      var bx = 196 + ctx.measureText(nameText).width + 16, by = cy - 32;
+      ctx.font = "bold 22px " + FS;
+      var bw = ctx.measureText("BEST").width + 26;
+      ctx.fillStyle = "#5cb85c"; roundRect(ctx, bx, by, bw, 34, 17); ctx.fill();
+      ctx.fillStyle = "#0c1c0c"; ctx.fillText("BEST", bx + 13, by + 24);
+    }
+
+    // size sub-line
+    ctx.font = "28px " + FS; ctx.fillStyle = "#b9a888"; ctx.textAlign = "left";
+    ctx.fillText(sizeLabel(b), 196, cy + 34);
+  }
+
+  function buildCardCanvas() {
+    return getLogo().then(function (logo) {
+      var c = document.createElement("canvas");
+      c.width = 1080; c.height = 1080;
+      var ctx = c.getContext("2d");
+
+      // background
+      var g = ctx.createLinearGradient(0, 0, 0, 1080);
+      g.addColorStop(0, "#2e2117"); g.addColorStop(1, "#14110b");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 1080, 1080);
+
+      if (logo) ctx.drawImage(logo, 480, 56, 120, 120);
+
+      // header
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#f5e6c8"; ctx.font = "bold 46px " + FS;
+      ctx.fillText("BEER VALUE COMPARISON", 540, 230);
+      ctx.fillStyle = "#b9a888"; ctx.font = "28px " + FS;
+      ctx.fillText("ranked best value first  ·  " + unitWord(), 540, 278);
+
+      // rows
+      var sorted = beers.slice().sort(function (a, b) { return pencePerMl(a) - pencePerMl(b); });
+      var shown = sorted.slice(0, 5);
+      var top = 330, rh = 132;
+      shown.forEach(function (b, i) { drawCardRow(ctx, b, i, top + i * rh, rh); });
+      if (sorted.length > 5) {
+        ctx.textAlign = "center"; ctx.fillStyle = "#b9a888"; ctx.font = "28px " + FS;
+        ctx.fillText("…and " + (sorted.length - 5) + " more", 540, top + shown.length * rh + 24);
+      }
+
+      // footer pill
+      ctx.font = "bold 38px " + FS;
+      var url = "thevaluator.app", uw = ctx.measureText(url).width;
+      var pw = uw + 88, ph = 76, px = (1080 - pw) / 2, py = 958;
+      ctx.fillStyle = "#f0a830"; roundRect(ctx, px, py, pw, ph, ph / 2); ctx.fill();
+      ctx.fillStyle = "#1c1410"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(url, 540, py + ph / 2 + 2); ctx.textBaseline = "alphabetic";
+
+      return c;
+    });
+  }
+
+  function shareImage() {
+    if (!beers.length) return;
+    els.imageBtn.disabled = true;
+    buildCardCanvas().then(function (canvas) {
+      canvas.toBlob(function (blob) {
+        els.imageBtn.disabled = false;
+        if (!blob) { showToast("Couldn't create the image"); return; }
+        var file = new File([blob], "the-valuator.png", { type: "image/png" });
+        if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+          navigator.share({
+            files: [file],
+            title: "The Valuator",
+            text: "My beer value comparison — thevaluator.app"
+          }).then(function () { gcEvent("share/image", "Share (image)"); })
+            .catch(function () { /* cancelled */ });
+        } else {
+          // desktop / unsupported: download the PNG
+          var u = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = u; a.download = "the-valuator.png";
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(u); }, 1000);
+          showToast("Image saved");
+          gcEvent("share/image-download", "Image downloaded");
+        }
+      }, "image/png");
+    });
+  }
+
   els.addBtn.addEventListener("click", addBeer);
   els.clearBtn.addEventListener("click", clearAll);
   els.shareBtn.addEventListener("click", shareResults);
+  els.imageBtn.addEventListener("click", shareImage);
 
   els.themeBtn.addEventListener("click", cycleTheme);
   applyTheme();
