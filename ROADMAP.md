@@ -48,8 +48,7 @@ priority, not fixed dates. ✅ = done · 🔜 = next up · 💡 = idea / later.
 
 - [ ] Accessibility pass (screen reader labels, keyboard navigation)
 - [x] Subtle animations — slide-in on add, fade-out on remove, FLIP re-ranking, value count-up
-- [ ] Haptic feedback on mobile
-- [ ] First-run tip / lightweight onboarding
+- [x] First-run tip / lightweight onboarding
 - [x] Custom domain (thevaluator.app, with HTTPS)
 
 ---
