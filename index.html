@@ -214,6 +214,22 @@
     text-decoration: none;
   }
   .kofi:hover { background: var(--gold-dim); }
+  .foot-links { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.8rem; }
+  .foot-links .kofi { margin-bottom: 0; }
+  .fb-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .fb-link:hover { border-color: var(--gold); }
   @media (max-width: 520px) {
     .form-grid { grid-template-columns: 1fr; }
     .hide-sm { display: none; }
@@ -291,7 +307,10 @@
   </div>
 
   <footer>
-    <a class="kofi" id="kofiBtn" href="#" target="_blank" rel="noopener" hidden>🍺 Buy me a beer</a>
+    <div class="foot-links">
+      <a class="kofi" id="kofiBtn" href="#" target="_blank" rel="noopener" hidden>🍺 Buy me a beer</a>
+      <a class="fb-link" id="fbBtn" href="#" target="_blank" rel="noopener" hidden>📘 Follow for updates</a>
+    </div>
     <div>Best value is highlighted. Prices saved in your browser only.</div>
   </footer>
 </div>
@@ -341,6 +360,19 @@
     b.href = "https://ko-fi.com/" + KOFI_USER;
     b.hidden = false;
     b.addEventListener("click", function () { gcEvent("kofi/click", "Buy me a beer"); });
+  })();
+
+  // --- Facebook "Follow for updates" link ---
+  // Full URL of your Facebook page, or "" to hide.
+  var FB_URL = "https://www.facebook.com/TheValuator/";
+
+  (function setupFacebook() {
+    if (!FB_URL) return;
+    var b = document.getElementById("fbBtn");
+    if (!b) return;
+    b.href = FB_URL;
+    b.hidden = false;
+    b.addEventListener("click", function () { gcEvent("facebook/click", "Follow on Facebook"); });
   })();
 
   // Record a custom event (no-op until GC_CODE is set and the script loads).
