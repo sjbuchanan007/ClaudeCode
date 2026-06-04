@@ -1,6 +1,6 @@
 {
-  "name": "Beer Value Calculator",
-  "short_name": "Beer Value",
+  "name": "The Valuator — Beer Value Calculator",
+  "short_name": "The Valuator",
   "description": "Compare bottled & canned beers down to pence per ml.",
   "start_url": "./index.html",
   "scope": "./",
