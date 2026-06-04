@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Beer Value Calculator</title>
+<title>The Valuator — Beer Value Calculator</title>
 
 <!-- Web app / Home Screen install -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -12,7 +12,7 @@
 <!-- iOS / iPad Home Screen support -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Beer Value">
+<meta name="apple-mobile-web-app-title" content="The Valuator">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 
@@ -231,11 +231,18 @@
   }
   .fb-link:hover { border-color: var(--gold); }
   @media (max-width: 520px) {
-    .form-grid { grid-template-columns: 1fr; }
     .hide-sm { display: none; }
+    /* Compact layout so results sit close to the inputs (less scrolling). */
+    .form-grid { gap: 0.55rem; }          /* keep 2 columns, just tighter */
+    .card { padding: 0.9rem; margin-bottom: 0.85rem; }
+    header { margin-bottom: 0.7rem; }
+    .logo { width: 46px; height: 46px; margin: 0.1rem auto 0.25rem; }
+    h1 { font-size: 1.3rem; }
+    .tagline { font-size: 0.78rem; }
+    label { font-size: 0.7rem; margin-bottom: 0.18rem; }
+    input, select { padding: 0.5rem 0.55rem; }
+    .btn-add { margin-top: 0.55rem; }
     /* Keep the theme toggle clear of the title on narrow phones. */
-    h1 { font-size: 1.4rem; }
-    .logo { width: 60px; height: 60px; }
     .theme-toggle { padding: 0.4rem 0.5rem; font-size: 1rem; }
     .tt-label { display: none; } /* icon-only on small screens */
   }
@@ -246,8 +253,8 @@
   <button class="theme-toggle" id="themeBtn" type="button" title="Switch colour theme" aria-label="Switch colour theme"></button>
   <header>
     <img class="logo" src="logo-mark.png" width="72" height="72" alt="The Valuator logo">
-    <h1>Beer Value Calculator</h1>
-    <div class="tagline">Compare bottled &amp; canned beers down to pence per ml</div>
+    <h1>The Valuator</h1>
+    <div class="tagline">Beer Value Calculator — compare beers down to the pence per ml</div>
   </header>
 
   <div class="card">
