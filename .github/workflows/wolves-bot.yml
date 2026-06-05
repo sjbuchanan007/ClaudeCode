@@ -31,9 +31,16 @@ jobs:
       - name: Run the bot
         working-directory: wolves-bot
         env:
+          # X (Twitter)
           CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
           CONSUMER_SECRET: ${{ secrets.CONSUMER_SECRET }}
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+          # Mastodon (add these secrets once your account is ready)
+          MASTODON_API_BASE_URL: ${{ secrets.MASTODON_API_BASE_URL }}
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+          # Bluesky (add these secrets once your account is ready)
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: python bot.py
