@@ -39,7 +39,7 @@ priority, not fixed dates. ✅ = done · 🔜 = next up · 💡 = idea / later.
 
 ## 💡 Phase 3 — App-like power
 
-- [ ] Full offline support (PWA service worker) so it works with no internet
+- [x] Full offline support (PWA service worker) so it works with no internet
 - [ ] Multiple saved comparison lists (e.g. "Tesco run" vs "Festival stock-up")
 - [ ] Preset beer database to auto-fill volume/ABV for common beers
 - [ ] Barcode scanning to auto-fill a beer from its packaging

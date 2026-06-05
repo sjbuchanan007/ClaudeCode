@@ -978,6 +978,13 @@
     if (!seen && !beers.length) els.tip.hidden = false;
   })();
 
+  // Register the service worker for offline support (works after first visit).
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () { /* ignore */ });
+    });
+  }
+
   els.themeBtn.addEventListener("click", cycleTheme);
   applyTheme();
   // When in Auto, follow live system theme changes (keeps chrome colour in sync).
