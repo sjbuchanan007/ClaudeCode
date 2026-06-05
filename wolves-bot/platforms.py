@@ -12,6 +12,12 @@ of: "posted", "skipped", "dry-run", "error".
 """
 
 import os
+import re
+
+# A Bluesky handle always contains a dot (e.g. wolvesfc.bsky.social). This lets
+# us turn those into real mentions while leaving legacy X-style @names (no dot,
+# e.g. @officialwolves) as plain text.
+_BLUESKY_HANDLE_RE = re.compile(r"@([a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,})")
 
 
 def _have(*names):
@@ -58,6 +64,38 @@ def post_to_mastodon(text, dry_run=False):
         return ("Mastodon", "error", str(err))
 
 
+def _bluesky_richtext(client, text):
+    """Turn @handle.tld mentions into real Bluesky mentions (facets).
+
+    Never raises: if anything about resolving a handle or building the rich
+    text fails, we fall back to posting the original plain string, so a bad
+    handle can't stop a post going out.
+    """
+    try:
+        from atproto import client_utils
+
+        builder = client_utils.TextBuilder()
+        pos = 0
+        mentioned = False
+        for match in _BLUESKY_HANDLE_RE.finditer(text):
+            if match.start() > pos:
+                builder.text(text[pos:match.start()])
+            try:
+                did = client.com.atproto.identity.resolve_handle(
+                    {"handle": match.group(1)}
+                ).did
+                builder.mention(match.group(0), did)
+                mentioned = True
+            except Exception:
+                builder.text(match.group(0))  # not a real handle -> plain text
+            pos = match.end()
+        if pos < len(text):
+            builder.text(text[pos:])
+        return builder if mentioned else text
+    except Exception:
+        return text
+
+
 def post_to_bluesky(text, dry_run=False):
     if not _have("BLUESKY_HANDLE", "BLUESKY_APP_PASSWORD"):
         return ("Bluesky", "skipped", "no credentials set")
@@ -68,7 +106,7 @@ def post_to_bluesky(text, dry_run=False):
     client = Client()
     try:
         client.login(os.environ["BLUESKY_HANDLE"], os.environ["BLUESKY_APP_PASSWORD"])
-        client.send_post(text)
+        client.send_post(_bluesky_richtext(client, text))
         return ("Bluesky", "posted", text)
     except Exception as err:
         return ("Bluesky", "error", str(err))
