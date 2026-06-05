@@ -67,9 +67,9 @@ def post_to_mastodon(text, dry_run=False):
 def _bluesky_richtext(client, text):
     """Turn @handle.tld mentions into real Bluesky mentions (facets).
 
-    Never raises: if anything about resolving a handle or building the rich
-    text fails, we fall back to posting the original plain string, so a bad
-    handle can't stop a post going out.
+    Never raises: if a handle can't be resolved we fall back to plain text for
+    that token, and we print why, so a failure is visible in the logs rather
+    than silently posting plain text.
     """
     try:
         from atproto import client_utils
@@ -81,18 +81,18 @@ def _bluesky_richtext(client, text):
             if match.start() > pos:
                 builder.text(text[pos:match.start()])
             try:
-                did = client.com.atproto.identity.resolve_handle(
-                    {"handle": match.group(1)}
-                ).did
+                did = client.resolve_handle(match.group(1)).did
                 builder.mention(match.group(0), did)
                 mentioned = True
-            except Exception:
-                builder.text(match.group(0))  # not a real handle -> plain text
+            except Exception as err:
+                print(f"  (bluesky: couldn't resolve {match.group(0)}: {err})")
+                builder.text(match.group(0))
             pos = match.end()
         if pos < len(text):
             builder.text(text[pos:])
         return builder if mentioned else text
-    except Exception:
+    except Exception as err:
+        print(f"  (bluesky: rich-text build failed, posting plain text: {err})")
         return text
 
 
