@@ -185,6 +185,31 @@
   }
   .btn-add { background: var(--gold); color: var(--on-gold); width: 100%; margin-top: 1rem; }
   .btn-add:hover { background: var(--gold-dim); }
+  /* Contextual quick-add presets — a thin scrollable strip, only shown on focus. */
+  .presets {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    padding: 0.5rem 0.1rem 0.2rem;
+    margin-top: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .presets::-webkit-scrollbar { display: none; }
+  .preset-chip {
+    flex: 0 0 auto;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .preset-chip:hover { border-color: var(--gold); }
+  .preset-sep { flex: 0 0 auto; align-self: center; color: var(--muted); padding: 0 0.1rem; }
   .btn-clear { background: transparent; color: var(--muted); border: 1px solid var(--border); }
   .btn-clear:hover { color: var(--text); }
   .btn-share { background: var(--gold); color: var(--on-gold); border: none; padding: 0.45rem 0.8rem; font-size: 0.85rem; }
@@ -334,6 +359,7 @@
         <input id="qty" type="number" min="1" step="1" value="1" inputmode="numeric">
       </div>
     </div>
+    <div class="presets" id="presets" hidden></div>
     <button class="btn-add" id="addBtn">Add beer</button>
   </div>
 
@@ -345,6 +371,10 @@
           <option value="ml">pence / ml</option>
           <option value="100ml">pence / 100 ml</option>
           <option value="pint">price / pint (568 ml)</option>
+        </select>
+        <select id="sortMode" title="Sort order" hidden>
+          <option value="value">sort: best value</option>
+          <option value="unit">sort: per unit</option>
         </select>
         <button class="btn-share" id="shareBtn" title="Share this comparison">📤 Share</button>
         <button class="btn-share" id="imageBtn" title="Share as an image">🖼️ Image</button>
@@ -383,6 +413,7 @@
   var beers = load();
   var unitMode = loadUnit();
   var theme = loadTheme();
+  var sortMode = "value"; // "value" (per ml) or "unit" (per alcohol unit)
 
   // --- GoatCounter analytics (event tracking) ---
   // Set this to your GoatCounter code, e.g. "thevaluator" for
@@ -454,6 +485,8 @@
     tipClose: document.getElementById("tipClose"),
     clearBtn: document.getElementById("clearBtn"),
     unitMode: document.getElementById("unitMode"),
+    sortMode: document.getElementById("sortMode"),
+    presets: document.getElementById("presets"),
     themeBtn: document.getElementById("themeBtn"),
     shareBtn: document.getElementById("shareBtn"),
     imageBtn: document.getElementById("imageBtn"),
@@ -562,6 +595,9 @@
       volume: volume,
       qty: qty
     });
+
+    // Log the size combo so we can learn the most popular pack/measure sizes.
+    gcEvent("size/" + volume + "ml-x" + qty, "Size " + volume + "ml ×" + qty);
 
     save();
     render();
@@ -715,17 +751,23 @@
 
     if (!beers.length) {
       els.results.innerHTML = '<div class="empty">No beers yet — add one above to start comparing.</div>';
+      els.sortMode.hidden = true;
       isFirstRender = false;
       return;
     }
 
-    // Sort cheapest pence/ml first
+    // Ranking metric: by per-unit only when every beer has an ABV, else per-ml.
+    var allHaveAbv = beers.every(function (b) { return b.abv && b.abv > 0; });
+    els.sortMode.hidden = !(beers.length >= 2 && allHaveAbv);
+    var byUnit = sortMode === "unit" && allHaveAbv;
+    function metric(b) { return byUnit ? pencePerUnit(b) : pencePerMl(b); }
+
     var sorted = beers.slice().sort(function (a, b) {
-      return pencePerMl(a) - pencePerMl(b);
+      return metric(a) - metric(b);
     });
 
-    var bestPpml = pencePerMl(sorted[0]);
-    var worstPpml = pencePerMl(sorted[sorted.length - 1]);
+    var bestMetric = metric(sorted[0]);
+    var worstMetric = metric(sorted[sorted.length - 1]);
 
     var rows = sorted.map(function (b, i) {
       var ppml = pencePerMl(b);
@@ -738,9 +780,9 @@
         : (b.volume + " ml");
 
       var savingsCell = "";
-      if (!isBest && worstPpml > bestPpml) {
-        var pctVsBest = ((ppml - bestPpml) / bestPpml) * 100;
-        savingsCell = '<span class="savings">+' + pctVsBest.toFixed(0) + '% vs best</span>';
+      if (!isBest && worstMetric > bestMetric) {
+        var pctVsBest = ((metric(b) - bestMetric) / bestMetric) * 100;
+        savingsCell = '<span class="savings">+' + pctVsBest.toFixed(0) + '% vs best (per ' + (byUnit ? 'unit' : 'ml') + ')</span>';
       }
 
       var abvText = b.abv ? (b.abv.toFixed(1) + "% ABV") : "";
@@ -1017,6 +1059,53 @@
     saveUnit();
     countedIds = {}; // re-run the count-up so values tick to the new unit
     render();
+  });
+
+  els.sortMode.value = sortMode;
+  els.sortMode.addEventListener("change", function () {
+    sortMode = els.sortMode.value;
+    countedIds = {};
+    render();
+  });
+
+  // ---- Contextual quick-add size presets (supermarket packs + pub measures) ----
+  var PRESETS = [
+    { label: "4×440", vol: 440, qty: 4 },
+    { label: "10×440", vol: 440, qty: 10 },
+    { label: "15×440", vol: 440, qty: 15 },
+    { label: "18×440", vol: 440, qty: 18 },
+    { label: "24×440", vol: 440, qty: 24 },
+    { label: "12×330", vol: 330, qty: 12 },
+    { label: "20×330", vol: 330, qty: 20 },
+    { sep: true },
+    { label: "Pint", vol: 568, qty: 1 },
+    { label: "⅔", vol: 379, qty: 1 },
+    { label: "½ pint", vol: 284, qty: 1 },
+    { label: "330 ml", vol: 330, qty: 1 },
+    { label: "440 ml", vol: 440, qty: 1 },
+    { label: "500 ml", vol: 500, qty: 1 }
+  ];
+  els.presets.innerHTML = PRESETS.map(function (p) {
+    if (p.sep) return '<span class="preset-sep">·</span>';
+    return '<button type="button" class="preset-chip" data-vol="' + p.vol +
+      '" data-qty="' + p.qty + '">' + esc(p.label) + '</button>';
+  }).join("");
+
+  // Show the strip only while Volume or Pack quantity is focused.
+  [els.volume, els.qty].forEach(function (inp) {
+    inp.addEventListener("focus", function () { els.presets.hidden = false; });
+    inp.addEventListener("blur", function () {
+      setTimeout(function () { els.presets.hidden = true; }, 150);
+    });
+  });
+  // Tapping a chip must not blur the field (which would hide the strip first).
+  els.presets.addEventListener("mousedown", function (e) { e.preventDefault(); });
+  els.presets.addEventListener("click", function (e) {
+    var btn = e.target.closest(".preset-chip");
+    if (!btn) return;
+    els.volume.value = btn.getAttribute("data-vol");
+    els.qty.value = btn.getAttribute("data-qty");
+    els.price.focus(); // nudge toward the price, the one field a preset can't know
   });
 
   // Enter key submits from any input

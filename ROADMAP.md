@@ -14,6 +14,11 @@ priority, not fixed dates. ✅ = done · 🔜 = next up · 💡 = idea / later.
 - Custom "v" lettermark branding (app icons, header logo, favicon)
 - Analytics: Cloudflare Web Analytics (page views) + GoatCounter (custom events)
 - Share button: native share sheet + copy-to-clipboard, with share-event tracking
+- Shareable image card (canvas) + offline support (service worker)
+- Social link previews (Open Graph) + first-run tip
+- Quick-add size presets (supermarket packs + pub measures), contextual on focus
+- Sort by best value or price-per-unit (shown only when every beer has an ABV)
+- Size usage logged to analytics to learn the most popular pack/measure sizes
 
 ## 🔜 Phase 1 — Must-haves
 
