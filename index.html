@@ -446,6 +446,7 @@
   var sharePromptDone = (function () {
     try { return !!localStorage.getItem(SP_KEY); } catch (e) { return false; }
   })();
+  var addedThisSession = false; // only nudge after the user actively adds a beer
 
   // --- GoatCounter analytics (event tracking) ---
   // Set this to your GoatCounter code, e.g. "thevaluator" for
@@ -634,6 +635,7 @@
     // Log the size combo so we can learn the most popular pack/measure sizes.
     gcEvent("size/" + volume + "ml-x" + qty, "Size " + volume + "ml ×" + qty);
 
+    addedThisSession = true;
     save();
     render();
     dismissTip();
@@ -792,8 +794,9 @@
       return;
     }
 
-    // Gentle, one-time nudge to share once there are a couple to compare.
-    els.sharePrompt.hidden = !(beers.length >= 2 && !sharePromptDone);
+    // Gentle, one-time nudge — only after the user actively adds a 2nd beer
+    // (not on load for returning visitors who already have a saved list).
+    els.sharePrompt.hidden = !(beers.length >= 2 && !sharePromptDone && addedThisSession);
 
     // Ranking metric: by per-unit only when every beer has an ABV, else per-ml.
     var allHaveAbv = beers.every(function (b) { return b.abv && b.abv > 0; });
