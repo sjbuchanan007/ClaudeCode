@@ -94,6 +94,8 @@
     }
   }
   * { box-sizing: border-box; }
+  /* Make the HTML `hidden` attribute win over our flex/inline-flex display rules. */
+  [hidden] { display: none !important; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
