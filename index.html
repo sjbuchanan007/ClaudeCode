@@ -128,6 +128,27 @@
   .tip span { flex: 1; }
   .tip-close { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 0.2rem 0.35rem; line-height: 1; }
   .tip-close:hover { color: var(--text); }
+  .share-prompt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    padding: 0.55rem 0.8rem;
+    background: var(--green-tint);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.88rem;
+    color: var(--text);
+  }
+  .sp-actions { display: inline-flex; align-items: center; gap: 0.5rem; flex: 0 0 auto; }
+  .link-btn {
+    background: var(--gold); color: var(--on-gold); border: none;
+    border-radius: 999px; padding: 0.35rem 0.85rem; font-size: 0.82rem; font-weight: 700;
+  }
+  .link-btn:hover { background: var(--gold-dim); }
+  .sp-close { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 0.2rem 0.3rem; line-height: 1; }
+  .sp-close:hover { color: var(--text); }
   .theme-toggle {
     position: absolute;
     top: 0;
@@ -382,6 +403,13 @@
       </div>
     </div>
     <div id="results"></div>
+    <div class="share-prompt" id="sharePrompt" hidden>
+      <span>📣 Happy with the result? Give it a share — it really helps.</span>
+      <span class="sp-actions">
+        <button class="link-btn" id="sharePromptBtn" type="button">Share</button>
+        <button class="sp-close" id="sharePromptClose" type="button" aria-label="Dismiss">✕</button>
+      </span>
+    </div>
   </div>
 
   <footer>
@@ -401,6 +429,7 @@
 
   var STORAGE_KEY = "beerValueCalc.v1";
   var TIP_KEY = "beerValueCalc.seenTip";
+  var SP_KEY = "beerValueCalc.sharePromptDone";
   var UNIT_KEY = "beerValueCalc.unit";
   var THEME_KEY = "beerValueCalc.theme";
   var ML_PER_PINT = 568.261; // UK imperial pint
@@ -414,6 +443,9 @@
   var unitMode = loadUnit();
   var theme = loadTheme();
   var sortMode = "value"; // "value" (per ml) or "unit" (per alcohol unit)
+  var sharePromptDone = (function () {
+    try { return !!localStorage.getItem(SP_KEY); } catch (e) { return false; }
+  })();
 
   // --- GoatCounter analytics (event tracking) ---
   // Set this to your GoatCounter code, e.g. "thevaluator" for
@@ -490,6 +522,9 @@
     themeBtn: document.getElementById("themeBtn"),
     shareBtn: document.getElementById("shareBtn"),
     imageBtn: document.getElementById("imageBtn"),
+    sharePrompt: document.getElementById("sharePrompt"),
+    sharePromptBtn: document.getElementById("sharePromptBtn"),
+    sharePromptClose: document.getElementById("sharePromptClose"),
     toast: document.getElementById("toast"),
     results: document.getElementById("results")
   };
@@ -752,9 +787,13 @@
     if (!beers.length) {
       els.results.innerHTML = '<div class="empty">No beers yet — add one above to start comparing.</div>';
       els.sortMode.hidden = true;
+      els.sharePrompt.hidden = true;
       isFirstRender = false;
       return;
     }
+
+    // Gentle, one-time nudge to share once there are a couple to compare.
+    els.sharePrompt.hidden = !(beers.length >= 2 && !sharePromptDone);
 
     // Ranking metric: by per-unit only when every beer has an ABV, else per-ml.
     var allHaveAbv = beers.every(function (b) { return b.abv && b.abv > 0; });
@@ -830,6 +869,8 @@
   }
 
   // Build a plain-text summary of the current comparison for sharing.
+  var HASHTAGS = "#TheValuator #BeerValue #BeerDeals";
+
   function buildShareText() {
     var sorted = beers.slice().sort(function (a, b) {
       return pencePerMl(a) - pencePerMl(b);
@@ -841,6 +882,7 @@
     });
     if (sorted.length > 5) lines.push("…and " + (sorted.length - 5) + " more");
     lines.push("", "Compare yours 👉 https://thevaluator.app");
+    lines.push("", HASHTAGS);
     return lines.join("\n");
   }
 
@@ -1007,7 +1049,7 @@
           navigator.share({
             files: [file],
             title: "The Valuator",
-            text: "My beer value comparison — thevaluator.app"
+            text: "My beer value comparison — thevaluator.app\n\n" + HASHTAGS
           }).then(function () { gcEvent("share/image", "Share (image)"); })
             .catch(function () { /* cancelled */ });
         } else {
@@ -1028,6 +1070,19 @@
   els.clearBtn.addEventListener("click", clearAll);
   els.shareBtn.addEventListener("click", shareResults);
   els.imageBtn.addEventListener("click", shareImage);
+
+  // One-time "share your result" nudge.
+  function dismissSharePrompt() {
+    sharePromptDone = true;
+    try { localStorage.setItem(SP_KEY, "1"); } catch (e) { /* ignore */ }
+    els.sharePrompt.hidden = true;
+  }
+  els.sharePromptClose.addEventListener("click", dismissSharePrompt);
+  els.sharePromptBtn.addEventListener("click", function () {
+    gcEvent("share/prompt", "Share (from prompt)");
+    shareResults();
+    dismissSharePrompt();
+  });
 
   // First-run tip: show once for brand-new visitors with no saved beers.
   els.tipClose.addEventListener("click", dismissTip);
