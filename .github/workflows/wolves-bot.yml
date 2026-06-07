@@ -1,12 +1,13 @@
 name: wolves-bot
 
 on:
-  # Runs at the top of every hour. bot.py decides whether THIS hour is one of
-  # today's randomly chosen posting slots, so most runs do nothing -- that's
-  # expected and free. GitHub may delay scheduled runs by a few minutes under
-  # load, which is fine for a banter bot.
+  # Runs at :17 each hour. Top-of-the-hour (:00) and round 5/10-min marks are
+  # the most congested, so GitHub is most likely to delay or drop runs then --
+  # an odd minute is more reliable. Running early in the hour also leaves plenty
+  # of delay headroom before the clock hour rolls over. bot.py decides whether
+  # THIS hour is one of today's posting slots, so most runs do nothing.
   schedule:
-    - cron: "0 * * * *"
+    - cron: "17 * * * *"
   # Lets you trigger a run by hand from the Actions tab (handy for testing).
   workflow_dispatch:
     inputs:
