@@ -145,6 +145,11 @@ def main():
     # Catch-up: post the earliest slot that's due (its hour has passed) but not
     # yet done. One per run, so several missed slots clear gradually, not in a
     # burst. This tolerates GitHub dropping runs -- any later run catches up.
+    if now.hour >= ACTIVE_END_HOUR:
+        # Posting window has closed -- don't fire catch-ups in the small hours
+        # just because GitHub's cron was idle all evening.
+        print(f"Past active hours ({ACTIVE_END_HOUR:02d}:00) -- nothing more tonight.")
+        return
     state = load_state(now.date())
     posted_slots = set(state["posted"])
     due = [h for h in sorted(plan) if h <= now.hour and h not in posted_slots]
