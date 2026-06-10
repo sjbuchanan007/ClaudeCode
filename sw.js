@@ -9,10 +9,11 @@
  *
  * Bump CACHE when the asset list or strategy changes to retire old caches.
  */
-var CACHE = "valuator-v1";
+var CACHE = "valuator-v2";
 var CORE = [
   "./",
   "./index.html",
+  "./privacy.html",
   "./manifest.webmanifest",
   "./logo-mark.png",
   "./icon-180.png",
