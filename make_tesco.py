@@ -49,8 +49,8 @@ def ranked_card(fname, title, sub, rows, punch=None):
             roundRect(d, [bx, y + 26, bx + bw, y + 60], 17, fill=GREEN)
             d.text((bx + 12, y + 30), badge, font=bf, fill=(12, 28, 12))
     if punch:
-        ctext(d, top + len(rows) * rh + 36, punch,
-              font("LiberationSans-Bold.ttf", 40), GOLD_SOFT)
+        ctext(d, top + len(rows) * rh + 40, punch,
+              font("LiberationSans-Bold.ttf", 34), GOLD_SOFT)
     footer_disclaimer(d, "Prices spotted at Tesco this week · vary by store & time")
     img.save(fname); print("wrote", fname)
 
@@ -63,7 +63,7 @@ def hero_card(fname, big, line1, line2):
     ctext(d, 300, big, font("LiberationSans-Bold.ttf", 150), GOLD)
     ctext(d, 500, line1, font("LiberationSans-Bold.ttf", 44), CREAM)
     ctext(d, 575, line2, font("LiberationSans-Regular.ttf", 32), MUTED)
-    footer_disclaimer(d, "Spotted at Tesco this week with Clubcard · prices vary")
+    footer_disclaimer(d, "Spotted at Tesco this week · prices vary by store & time")
     img.save(fname); print("wrote", fname)
 
 
@@ -72,10 +72,10 @@ if __name__ == "__main__":
     ranked_card(
         "tesco-best.png",
         "MATCH-DAY BEST VALUE",
-        "spotted at Tesco  ·  Clubcard price per pint",
+        "spotted at Tesco  ·  best price per pint",
         [
-            ("Carling", "19 × 440 ml  ·  £9.25", 0.63, True, "CHEAPEST"),
-            ("Heineken", "15 × 440 ml  ·  £13.00", 1.12, False, ""),
+            ("Heineken", "15 × 440 ml  ·  £13.00", 1.12, True, "CHEAPEST"),
+            ("Carling", "18 × 440 ml  ·  £15.99", 1.15, False, ""),
             ("Stella", "18 × 440 ml  ·  £17.89", 1.28, False, ""),
             ("Madri", "15 × 440 ml  ·  £15.00", 1.29, False, ""),
             ("San Miguel", "10 × 440 ml  ·  £10.00", 1.29, False, ""),
@@ -86,18 +86,18 @@ if __name__ == "__main__":
     ranked_card(
         "tesco-trap.png",
         "SAME BEER, MIND THE PACK",
-        "Birra Moretti at Tesco — the 18-pack beat the 12",
+        "Birra Moretti at Tesco — £18 for 18, or £18.25 for 12",
         [
-            ("18 × 330 ml", "Birra Moretti  ·  £16.25", 1.55, True, "MORE BEER, LESS £"),
-            ("12 × 330 ml", "Birra Moretti  ·  £18.25", 2.62, False, "FEWER, COSTS MORE"),
+            ("18 × 330 ml", "Birra Moretti  ·  £18 with Clubcard", 1.72, True, "6 MORE BOTTLES"),
+            ("12 × 330 ml", "Birra Moretti  ·  £18.25", 2.62, False, "SAME £, LESS BEER"),
         ],
-        punch="That's £2 MORE for 6 FEWER bottles. Always check.",
+        punch="Near enough the same price — for 6 more bottles. Always check.",
     )
 
-    # C — cheapest pint hero
+    # C — the value spread (why it pays to check)
     hero_card(
         "tesco-pint.png",
-        "63p",
-        "a pint of lager",
-        "Carling, 19 × 440 ml for £9.25 with a Clubcard",
+        "£1.12",
+        "to £3.23 a pint",
+        "The same lagers at Tesco — that's why it pays to check",
     )
