@@ -37,10 +37,14 @@ ACTIVE_END_HOUR = 23     # up to 22:59
 MIN_POSTS_PER_DAY = 6
 MAX_POSTS_PER_DAY = 12
 
-TWEETS_FILE = Path(__file__).with_name("tweets.txt")
+# tweets.txt and state.json live in DATA_DIR (default: next to this script).
+# In the Docker setup DATA_DIR=/config is a mounted volume, so they persist and
+# tweets.txt is editable without rebuilding the image.
+DATA_DIR = Path(os.environ.get("DATA_DIR") or Path(__file__).parent)
+TWEETS_FILE = DATA_DIR / "tweets.txt"
 # Records which of today's slots have already been posted, so the bot can run
-# often, catch up slots that GitHub's flaky cron missed, and never repeat one.
-STATE_FILE = Path(__file__).with_name("state.json")
+# often, catch up slots that a missed run skipped, and never repeat one.
+STATE_FILE = DATA_DIR / "state.json"
 
 
 def load_tweets():

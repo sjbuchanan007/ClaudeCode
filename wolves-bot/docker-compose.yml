@@ -1,0 +1,11 @@
+services:
+  wolves-bot:
+    build: .
+    image: wolves-bot
+    container_name: wolves-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      # Holds tweets.txt (edit it here) and state.json. Adjust the host path to
+      # taste -- this is the usual Unraid appdata location.
+      - /mnt/user/appdata/wolves-bot:/config
